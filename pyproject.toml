@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solar-forecasting"
+version = "0.1.0"
+description = "NASA POWER data validation utilities for a future solar forecasting pipeline"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "pandas>=2.1,<3",
+  "pyarrow>=14,<24",
+  "requests>=2.31,<3",
+]
+
+[project.optional-dependencies]
+analysis = ["matplotlib>=3.8,<4"]
+dev = ["pytest>=8,<10", "ruff>=0.6,<1"]
+
+[tool.setuptools]
+py-modules = ["sanity_pull", "new_pull"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
