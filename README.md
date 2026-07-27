@@ -1,123 +1,216 @@
-# Solar Data Sanity Pull
+# Next-Day Solar Irradiance Forecasting for Port of Spain, Trinidad
 
-## System purpose
+A reproducible research pipeline testing whether a compact 2-layer LSTM, trained only on
+strictly past-observed NASA POWER hourly data, can beat a 24-hour persistence baseline at
+next-day (24 hour horizon) GHI forecasting.
 
-This repository currently implements a small data-ingestion validation system for a future solar forecasting pipeline. It retrieves one known week of hourly meteorological and solar-radiation data from the NASA POWER API for Port of Spain, Trinidad and Tobago, validates basic assumptions about the response, and saves the normalized data as a Parquet file.
+**Research question.** Can an LSTM given only the past 24 hours of observed irradiance and
+weather, plus calendar features for the target day, produce next-day GHI forecasts that
+beat persistence on daylight-masked error metrics?
 
-The current system verifies that the upstream data is suitable for a larger historical pull. It does **not** yet perform forecasting, model training, feature engineering, or a multi-year download.
+**Registered hypothesis, recorded before modelling.** The LSTM achieves a skill score above
+zero on the held-out test year, with the largest gains in wet-season months.
 
-## Architecture and data flow
+**Deployment framing.** A proof of concept for grid-operator day-ahead scheduling in a small
+island state targeting 30 percent renewable power by 2030. Nothing here is deployed.
 
-```mermaid
-flowchart LR
-    A["Static location, dates, and parameters"] --> B["NASA POWER hourly point API"]
-    B --> C["JSON response"]
-    C --> D["Pandas DataFrame normalization"]
-    D --> E["Sanity checks and console report"]
-    D --> F["sanity_week.parquet"]
-```
+## Result
 
-The complete implementation is in `sanity_pull.py`:
+Both parts of the registered hypothesis hold on the held-out 2024 test year.
 
-1. `fetch()` sends an HTTPS GET request to the NASA POWER hourly point endpoint.
-2. `to_frame()` extracts the returned parameter series, parses hourly timestamps, sorts the index, and replaces NASA's `-999.0` fill value with missing values.
-3. `report()` prints the variables and units returned by NASA, evaluates the solar-radiation profile, counts rows and missing cells, and prints an overall pass/fail result.
-4. The main block writes the resulting frame to `sanity_week.parquet`.
+| Model | MAE (W/m^2) | RMSE (W/m^2) | MAPE (%) | Skill vs persistence |
+|---|---|---|---|---|
+| Persistence | 77.85 | 123.35 | 21.64 | 0.000 |
+| **LSTM** | **62.82** | **90.78** | **21.01** | **0.264** |
+| `lstm_upperbound` (not a forecast) | 39.34 | 62.11 | 15.17 | 0.496 |
 
-## Input configuration
+Daylight-masked, 4229 of 8736 test hours above 20 W/m^2, 364 forecast days.
 
-Configuration is currently defined as module-level constants rather than command-line arguments or environment variables.
+Skill is larger in the wet season (0.286) than the dry season (0.201), as hypothesised.
+Persistence degrades badly in the wet season because convective cloud makes today a poor
+guide to tomorrow, which is exactly the regime where a learned model earns its place.
 
-| Setting | Value | Meaning |
-| --- | --- | --- |
-| Latitude | `10.6549` | Port of Spain point latitude |
-| Longitude | `-61.5019` | Port of Spain point longitude |
-| Start | `20230101` | First requested day, inclusive |
-| End | `20230107` | Last requested day, inclusive |
-| Community | `RE` | NASA POWER renewable-energy community |
-| Time standard | `LST` | Local solar time |
-| Response format | `JSON` | API response serialization |
-| Fill value | `-999.0` | Upstream missing-data sentinel |
+`lstm_upperbound` is the spec's optional perfect-forecast variant, which is handed the
+target day's *observed* weather. It is not a forecast and is never the headline. Its value
+is as an upper bound: a hypothetical perfect numerical weather prediction feed would roughly
+double the skill gain over persistence.
 
-The request targets:
+Read `DECISIONS.md` before the results. In particular D34 explains why MAPE barely separates
+the two models while RMSE separates them by 26 percent, and D31 explains the prediction
+clipping.
 
-```text
-https://power.larc.nasa.gov/api/temporal/hourly/point
-```
+## Setup
 
-## Data contract
-
-Each output row represents one hour in local solar time. The DataFrame index is a timezone-naive `DatetimeIndex` parsed from NASA timestamps in `YYYYMMDDHH` format.
-
-| Column | Description | API unit | Stored type |
-| --- | --- | --- | --- |
-| `ALLSKY_SFC_SW_DWN` | All-sky surface shortwave downward irradiance, used as GHI | `Wh/m^2` | `float64` |
-| `T2M` | Air temperature at 2 metres | `C` | `float64` |
-| `RH2M` | Relative humidity at 2 metres | `%` | `float64` |
-| `WS10M` | Wind speed at 10 metres | `m/s` | `float64` |
-| `CLOUD_AMT` | Cloud amount | `%` | `float64` |
-| `PW` | Precipitable water | `cm` | `float64` |
-
-The expected output shape for the configured seven-day interval is 168 rows by 6 columns.
-
-## Validation behavior
-
-The run is marked as passed only when all of these conditions hold:
-
-- NASA serves all six requested variables.
-- Mean GHI during hours 21:00-04:00 is below `20 Wh/m^2`.
-- Mean GHI during hours 11:00-13:00 is between `300` and `1100 Wh/m^2`.
-- The response contains exactly 168 hourly rows.
-
-The report also displays API-provided units, maximum GHI, and the total number of missing cells after fill-value replacement.
-
-Missing cells and duplicate timestamps fail validation, preventing incomplete data from being accepted silently.
-
-## Latest verified run
-
-The sanity pull was run successfully on 2026-06-21 against the live NASA POWER service. It produced:
-
-| Check | Result |
-| --- | --- |
-| Variables served | All 6 requested variables |
-| Rows | 168 |
-| Missing cells | 0 |
-| Duplicate timestamps | 0 |
-| Timestamp range | 2023-01-01 00:00 through 2023-01-07 23:00 LST |
-| Mean night GHI | `0.00 Wh/m^2` |
-| Mean midday GHI | `632.73 Wh/m^2` |
-| Maximum GHI | `794.62 Wh/m^2` |
-| Overall result | Passed |
-
-## Quick start
-
-Create an isolated environment and install the project:
+Python 3.11 or newer. CPU only, no GPU needed, the model has 79768 parameters.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e .
-python sanity_pull.py
+python -m pip install -r requirements.txt
 ```
 
-For development checks:
+## Run order
+
+One command runs everything, from cached raw Parquet to the seven final figures, with no
+manual intervention:
 
 ```bash
-python -m pip install -e ".[dev]"
-ruff check .
-pytest
+python run_all.py
 ```
 
-A successful run replaces `sanity_week.parquet` in the current working directory and prints the sanity report to standard output. HTTP errors, timeouts, connection failures, unexpected response structures, and Parquet serialization failures terminate the process with an exception.
+About 75 seconds on a laptop CPU when the raw Parquet is already present, plus roughly 15
+seconds of API time on the first run. Useful variants:
 
-## Current limitations
+```bash
+python run_all.py --force-download
+```
 
-- The location, date range, variables, and output path are hard-coded.
-- The HTTP request has a 120-second timeout but no retry or backoff policy.
-- Response schema and data types are assumed rather than formally validated.
-- The output file is overwritten without versioning or provenance metadata.
-- No full 2019-2024 ingestion loop or forecasting model has been implemented.
+```bash
+python run_all.py --upper-bound
+```
 
-## Intended next stage
+```bash
+python run_all.py --skip-gate1
+```
 
-Once the input contract and validation policy are finalized, the same fetch-normalize-validate pattern can be extended to annual requests for the planned 2019-2024 historical dataset. That expansion should add configuration, retries, explicit schema validation, completeness thresholds, reproducible dependencies, partitioned outputs, and tests before model-development work begins.
+Every stage is also runnable on its own, in this order. Each has argparse defaults, so no
+arguments are required:
+
+```bash
+python -m src.ingest
+```
+
+```bash
+python -m src.synthetic
+```
+
+```bash
+python -m src.preprocess
+```
+
+```bash
+python -m src.windowing
+```
+
+```bash
+python -m src.baseline
+```
+
+```bash
+python -m src.train
+```
+
+```bash
+python -m src.evaluate
+```
+
+```bash
+python -m src.analysis
+```
+
+Tests, which pin down the gap-handling and scaling behaviour that the real gapless data
+never exercises:
+
+```bash
+python -m pytest -q
+```
+
+## The three validation gates
+
+The pipeline halts on any gate failure. Verdicts land in `results/validation_report.txt`.
+
+**Gate 0, data sanity** (in `src/ingest.py`). Runs before anything else. Checks the row
+count against 52608, records the GHI units metadata string, and asserts the series is
+physically plausible for a tropical coastal site: night mean below 20 W/m^2, midday mean
+between 300 and 1100, maximum below 1200. Logs a per-column missing census and drops any
+column above 5 percent missing.
+
+**Gate 1, synthetic pipeline validation** (in `src/synthetic.py`). Runs before any
+real-data training. Generates a clipped sinusoid whose answer is known by construction, runs
+the entire preprocess, windowing, train, and evaluate path on it, and asserts the window
+shapes are right, no NaN reaches the model, persistence achieves near-zero error on the
+noise-free variant, and the LSTM reaches low loss within a few epochs. If this fails, the
+pipeline is broken, not the model. Everything it writes goes into `gate1_sandbox/` so it can
+never overwrite the real experiment.
+
+**Gate 2, leakage audit** (in `src/windowing.py`). Runs after windowing, before training.
+Twenty-seven programmatic assertions, not comments. Beyond the timestamp ordering check, it
+verifies that the encoder's values *equal the scaled observations at the encoder timestamps*
+and the target's equal the scaled GHI at the target timestamps. That is the strongest
+available check, because it proves the encoder holds the actual observed past rather than
+merely being the right shape. It also proves the three splits touch no common hour, that
+they appear in chronological order, and that the scaler's recorded fit index ends before the
+validation year begins.
+
+## Output map
+
+| Path | What it is |
+|---|---|
+| `config.yaml` | Every number the pipeline uses. No magic numbers live in code. |
+| `data/raw/pos_hourly_2019_2024.parquet` | The six-year hourly pull, 52608 rows, 6 columns. |
+| `data/raw/pos_hourly_2019_2024.units.txt` | GHI units string recorded from API metadata. |
+| `data/processed/features.parquet` | Model features in physical units, 52608 rows, 11 columns. |
+| `data/processed/scaler.pkl` | Both fitted scalers plus the fit index provenance Gate 2 audits. |
+| `data/processed/feature_spec.json` | The feature layout that actually materialised after Gate 0. |
+| `data/processed/windows.npz` | Encoder, decoder, target and position arrays per split. |
+| `data/processed/window_index.csv` | Every window's forecast-origin timestamp. |
+| `results/validation_report.txt` | Gate 0, Gate 1 and Gate 2 verdicts with every check line. |
+| `results/metrics.csv` | Long format: model, split, season, metric, value. |
+| `results/summary.txt` | The human-readable results table. |
+| `results/loss_log.csv` | Per-epoch train loss, val loss, and daylight-masked val MAE. |
+| `results/checkpoints/lstm_best.pt` | Best weights, as selected by validation loss. |
+| `results/checkpoints/lstm_best_config.json` | Resolved config, parameter count, best epoch, window counts. |
+| `results/predictions/{model}_{split}.npy` | Predictions in W/m^2, shape (samples, 24). |
+| `results/figures/fig1_clear_day.png` | Clearest test day, observed against both models. |
+| `results/figures/fig2_cloudy_day.png` | Most clouded test day, same three series. |
+| `results/figures/fig3_error_by_hour.png` | Daylight MAE by hour of day, both models. |
+| `results/figures/fig4_seasonal.png` | Daylight RMSE by month, both models, wet season shaded. |
+| `results/figures/fig5_scatter.png` | Predicted against observed, two panels, identity lines. |
+| `results/figures/fig6_loss_curve.png` | Train and validation loss, best epoch marked. |
+| `results/figures/fig7_ghi_climatology.png` | Mean GHI by hour across all six years. |
+| `gate1_sandbox/` | Gate 1's fixture artefacts. Safe to delete, regenerated each run. |
+| `DECISIONS.md` | Every discretionary choice with its rationale. |
+
+## Design in one paragraph
+
+The encoder sees hours t-23 through t: observed GHI, five weather variables, and five
+calendar features. The decoder sees hours t+1 through t+24 with **calendar features only**,
+because a clock needs no forecast while tomorrow's cloud cover does. The target is GHI at
+t+1 through t+24, emitted as 24 values at once rather than recursively, so errors do not
+compound along the horizon. Splits are chronological by calendar year, train 2019-2022,
+validation 2023, test 2024, and a window joins a split only when its encoder input *and*
+its target both fall entirely inside that split's years. Scalers are fit on training rows
+only. Metrics are computed on hours where the observed GHI exceeds 20 W/m^2, because roughly
+half of any 24 hour window is night, when every model is correct for free.
+
+## How to retrain
+
+```bash
+# 1. Every knob lives in config.yaml. Never edit src/ to retune.
+# 2. Capacity: model.hidden_size, num_layers, dropout, head_hidden
+# 3. Optimiser: training.learning_rate, batch_size, max_epochs, early_stopping_patience
+# 4. Windows: windowing.encoder_hours, horizon_hours, train_stride. Seed: reproducibility.seed
+# 5. Refit (windows rebuild only if you touched the windowing or splits sections):
+python -m src.preprocess && python -m src.windowing && python -m src.train
+# 6. Re-score and redraw against the new checkpoint:
+python -m src.baseline && python -m src.evaluate && python -m src.analysis
+# 7. Before reporting anything, run the whole pipeline with its gates: python run_all.py
+# 8. Never tune on the test rows of metrics.csv. Watch loss_log.csv; test is touched once.
+```
+
+## Reproducibility
+
+A fixed seed reproduces metrics **bit-exactly**, not merely to the three decimal places the
+spec requires. Verified by two consecutive clean end-to-end runs: all 312 metric rows and
+both loss curves matched to 0.000000000000. This needs CPU execution, zero dataloader
+workers, a seeded dataloader generator, and `torch.use_deterministic_algorithms(True)`, all
+of which are set in `config.yaml` and `src/train.py`. cuDNN's LSTM kernels are not
+deterministic, which is why the device is CPU and not merely defaulted to it.
+
+## Reused assets
+
+`sanity_pull.py` and `new_pull.py` remain at the repository root as the original exploratory
+scripts. `src/ingest.py` is a refactor of `sanity_pull.py`, preserving its request
+parameters, its `-999` to NaN normalisation, and the polite two second sleep between
+requests. `sanity_pull.py` was validated against the live service on a known week, and that
+validation is what `src/ingest.py` inherits rather than re-derives.

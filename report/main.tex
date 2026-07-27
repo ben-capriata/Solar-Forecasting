@@ -1,0 +1,457 @@
+% ==========================================================
+% Internship / Term Project Report
+% BSc (Hons) Data Science and AI, IIT Guwahati
+% ==========================================================
+
+\documentclass{article}
+\usepackage{spconf,amsmath,amssymb,graphicx,hyperref}
+\usepackage{booktabs}
+\usepackage{enumitem}
+
+\def\x{{\mathbf x}}
+\def\L{{\cal L}}
+
+% -------------------------
+% Title and Author Info
+% -------------------------
+\title{Next-Day Solar Irradiance Forecasting for a Tropical Island Grid:
+A Leakage-Audited LSTM Encoder--Decoder Benchmarked Against Persistence}
+
+\name{[YOUR NAME] (Roll Number: [ROLL NO])}
+
+\address{
+Term Project Report\\
+Trimester [7/8/9]\\[0.5em]
+B.Sc. (Honours) Data Science and Artificial Intelligence\\
+Indian Institute of Technology Guwahati, India\\
+\texttt{[your-email]@op.iitg.ac.in}
+}
+
+\begin{document}
+\ninept
+\maketitle
+
+% ==========================================================
+\begin{abstract}
+% ==========================================================
+Small island power systems that are adding utility-scale solar capacity need
+day-ahead irradiance forecasts in order to schedule dispatchable generation, yet
+they frequently lack access to a numerical weather prediction feed. I ask whether
+a compact recurrent model, given nothing but strictly past-observed data, can
+beat the persistence forecast that such operators fall back on. Using six years
+of hourly NASA POWER reanalysis for Port of Spain, Trinidad and Tobago, I train a
+two-layer LSTM encoder with a multilayer perceptron head to emit all twenty-four
+hours of the next day at once, and I compare it against a twenty-four hour
+persistence baseline on a held-out test year. Before recording any result I
+registered the hypothesis that the model would achieve a positive forecast skill
+score, with the larger gain falling in the wet season. Both parts hold. On the
+2024 test year the model reduces daylight-masked RMSE from 123.35 to
+90.78~W/m\textsuperscript{2}, a forecast skill of 0.264, and the seasonal split
+is 0.286 wet against 0.201 dry. Because a result of this kind is worthless if the
+model has seen its own answer, I supported it with twenty-seven programmatic
+leakage assertions rather than with prose, and the pipeline reproduces
+bit-exactly across independent runs.
+\end{abstract}
+
+% ==========================================================
+\begin{keywords}
+% ==========================================================
+Solar irradiance forecasting, long short-term memory, time series, data leakage,
+renewable energy integration
+\end{keywords}
+
+% ==========================================================
+\section{Introduction}
+% ==========================================================
+
+Trinidad and Tobago has committed to sourcing thirty percent of its electricity
+from renewables by 2030 under its Paris Agreement contribution
+\cite{gott2021tt}, and its first utility-scale solar facility is now feeding a
+grid that has run on natural gas for its entire history. That transition creates
+an operational problem that did not previously exist. A gas turbine produces what
+it is instructed to produce; a solar farm produces what the sky permits. To keep
+supply matched to demand, a system operator must decide the evening before how
+much dispatchable generation to commit for the following day, and the quality of
+that decision depends directly on how well tomorrow's irradiance can be
+anticipated.
+
+The forecasting literature is mature and largely agrees on what works
+\cite{yang2018history, inman2013solar}, but almost all of the strongest methods
+assume access to a numerical weather prediction (NWP) feed. That assumption is
+comfortable for a European transmission operator and much less so for a small
+island utility, for which an NWP subscription is a procurement decision with a
+price attached. The operator without one falls back on persistence: assume
+tomorrow looks like today. In the tropics this is a weaker crutch than it sounds,
+because convective cloud makes consecutive days only loosely related.
+
+My interest is therefore in the gap between those two positions. I ask what a
+learned model can extract from observational history alone, with no forecast
+information of any kind, and whether that is enough to justify displacing
+persistence. This framing has a consequence that shapes the entire design: the
+model may see tomorrow's calendar, because a clock requires no forecast, but it
+may not see tomorrow's weather, because that would presuppose the very feed the
+problem assumes is absent.
+
+Section~2 states the problem and my objectives. Section~3 details the
+methodology, including the architecture and the leakage audit. Section~4 presents
+the experimental results, Section~5 discusses and interprets them, and Section~6
+concludes with future work.
+
+% ==========================================================
+\section{Problem Statement and Objectives}
+% ==========================================================
+
+\subsection{Problem Statement}
+
+Let $y_t$ denote global horizontal irradiance (GHI) in W/m\textsuperscript{2} at
+hour $t$, and let $\mathbf{w}_t$ denote a vector of concurrently observed weather
+variables. A forecast is issued at local midnight on each day, which I take as
+the forecast origin $t$. The task is to produce
+$\hat{y}_{t+1}, \dots, \hat{y}_{t+24}$ using only information available at time
+$t$.
+
+The binding constraint is what "available" means. The model receives the previous
+twenty-four hours of observed irradiance and weather, $\{y_{t-23:t},
+\mathbf{w}_{t-23:t}\}$, together with deterministic calendar features for the
+target hours. It does not receive any observation or forecast of the weather
+during $t+1$ to $t+24$. This is deliberately harsher than the closest prior work:
+Qing and Niu \cite{qing2018hourly} forecast day-ahead hourly irradiance for an
+island site using an LSTM but supply the target day's weather forecasts as input.
+Withholding them is the specific question I am asking.
+
+\subsection{Objectives}
+
+\begin{enumerate}[noitemsep,topsep=2pt]
+    \item To assemble and validate a six-year hourly meteorological record for
+      Port of Spain, and to verify it is physically plausible before modelling.
+    \item To implement a twenty-four hour persistence forecast as the reference
+      against which skill is measured.
+    \item To design and train an LSTM encoder--decoder that forecasts all
+      twenty-four hours of the next day using only past-observed inputs.
+    \item To prove, by programmatic assertion rather than by inspection, that no
+      target information reaches the model.
+    \item To evaluate on a held-out year using daylight-masked error metrics and
+      the forecast skill score, disaggregated by season and hour of day.
+    \item To quantify what a perfect weather forecast would be worth, by training
+      an upper-bound variant that is given the target day's observed weather.
+\end{enumerate}
+
+Before running any model I recorded the hypothesis that the LSTM would achieve a
+skill score above zero on the held-out test year, with the largest gains in
+wet-season months. Registering it in advance is what makes the seasonal result in
+Section~4 a confirmation rather than an observation found after the fact.
+
+% ==========================================================
+\section{Methodology}
+% ==========================================================
+
+\subsection{Data and Features}
+
+I used the NASA POWER hourly reanalysis \cite{sparks2018nasapower} at
+$10.65^\circ$N, $61.50^\circ$W for 2019--2024 inclusive, in local solar time:
+52{,}608 hours with six variables, namely all-sky surface shortwave downward flux
+(taken as GHI), air temperature, relative humidity, wind speed, cloud amount and
+precipitable water. POWER serves hourly GHI in Wh/m\textsuperscript{2}, which is
+numerically equal to the mean W/m\textsuperscript{2} over that hour, so no
+conversion factor is applied anywhere.
+
+To each hour I added five calendar features. Hour of day and day of year are
+cyclical, so encoding them as integers would place 23:00 and 00:00 at opposite
+ends of a range they are in fact adjacent to. I encoded each as a sine--cosine
+pair,
+\begin{equation}
+    \left(\sin\tfrac{2\pi h}{24},\ \cos\tfrac{2\pi h}{24},\
+          \sin\tfrac{2\pi d}{365.25},\ \cos\tfrac{2\pi d}{365.25}\right),
+\end{equation}
+which preserves adjacency, plus a binary wet-season indicator for June through
+December. These five are the only features the model is permitted to know for
+tomorrow.
+
+\subsection{Windowing, Splits and Scaling}
+
+Each training example pairs an encoder input of shape $(24, 11)$ with a decoder
+input of shape $(24, 5)$ and a target of shape $(24,)$. Splits are chronological
+by calendar year, never random: 2019--2022 train, 2023 validation, 2024 test. A
+window joins a split only if its encoder input \emph{and} its target both fall
+entirely inside that split's years, which costs a handful of windows at each year
+boundary but guarantees the splits share no hour. Training uses stride~1, giving
+35{,}017 windows; validation and test use stride~24 at midnight origins, giving
+363 and 364 windows, so that evaluation measures the operational task of one
+forecast issued per day. Standardisation statistics are fitted on training rows
+only, and the fitted index range is persisted so that the claim can be audited
+rather than assumed.
+
+\subsection{Model Architecture}
+
+The encoder is a two-layer LSTM \cite{hochreiter1997long} with 64 hidden units,
+dropout 0.2 between layers \cite{srivastava2014dropout}. At each step it computes
+\begin{align}
+    \mathbf{i}_t &= \sigma(W_i \x_t + U_i \mathbf{h}_{t-1} + b_i), \\
+    \mathbf{f}_t &= \sigma(W_f \x_t + U_f \mathbf{h}_{t-1} + b_f), \\
+    \mathbf{o}_t &= \sigma(W_o \x_t + U_o \mathbf{h}_{t-1} + b_o), \\
+    \mathbf{c}_t &= \mathbf{f}_t \odot \mathbf{c}_{t-1}
+                    + \mathbf{i}_t \odot \tanh(W_c \x_t + U_c \mathbf{h}_{t-1} + b_c), \\
+    \mathbf{h}_t &= \mathbf{o}_t \odot \tanh(\mathbf{c}_t),
+\end{align}
+where $\odot$ is the elementwise product. The gating is what makes the recurrence
+appropriate here: the forget gate lets the network retain a persistent cloud
+regime across the full day while discarding hour-to-hour fluctuation.
+
+I take the final hidden state $\mathbf{h}_{24}$ of the last layer as a summary of
+what the sky has been doing, concatenate it with the flattened calendar block
+$\mathbf{D} \in \mathbb{R}^{24\times5}$ describing which twenty-four hours are
+being asked about, and pass the result through a single hidden layer of 128 ReLU
+units:
+\begin{equation}
+    \hat{\mathbf{y}} = W_2\,\mathrm{ReLU}\!\left(W_1
+      \begin{bmatrix}\mathbf{h}_{24} \\ \mathrm{vec}(\mathbf{D})\end{bmatrix}
+      + b_1\right) + b_2, \quad \hat{\mathbf{y}} \in \mathbb{R}^{24}.
+\end{equation}
+Concatenation rather than conditioning keeps the two questions separable, so the
+calendar path can learn the clear-sky envelope while the recurrent path learns
+the departure from it. All twenty-four hours are emitted simultaneously. A
+recursive decoder \cite{sutskever2014sequence} would feed its own hour-one
+prediction into hour two and compound error along the horizon, and it would
+require a GHI input for tomorrow that by construction does not exist. The model
+holds 79{,}768 trainable parameters.
+
+\subsection{Training}
+
+I trained with Adam \cite{kingma2015adam} at learning rate $10^{-3}$, batch size
+64, plain MSE over all twenty-four hours, and early stopping on validation loss
+with patience 10. Training halted at epoch 15 and restored epoch 5. Execution is
+CPU-only with deterministic algorithms enabled, because cuDNN's LSTM kernels are
+not deterministic; consequently two independent clean runs reproduce all 312
+metric rows bit-exactly, not merely to three decimal places.
+
+\subsection{Validation Gates}
+
+A forecasting result is only as trustworthy as the evidence that the model never
+saw its answer, and prose assurances are not evidence. I therefore built three
+gates that halt the pipeline on failure. Gate~0 checks the raw download for
+physical plausibility before anything else runs: row count, night mean below
+20~W/m\textsuperscript{2}, midday mean within $[300, 1100]$, maximum below 1200,
+and a per-column missing census. Gate~1 runs the entire preprocess, windowing,
+training and evaluation path on a synthetic clipped sinusoid whose answer is
+known by construction, so that a failure can be attributed to the pipeline rather
+than to the model. Gate~2 is the leakage audit: twenty-seven assertions verifying
+not only that every encoder timestamp precedes every target timestamp, but that
+the encoder tensor \emph{equals} the scaled observations at those timestamps and
+the target tensor equals the scaled GHI at its own, that the decoder carries the
+five calendar features and nothing else, that the three splits share no hour, and
+that the scaler's recorded fit index terminates before the validation year opens.
+Checking values rather than shapes is what makes this a proof rather than a
+gesture. All three gates pass.
+
+\subsection{Baseline and Metrics}
+
+The reference forecast is twenty-four hour persistence,
+$\hat{y}_{t+k} = y_{t+k-24}$, which for a midnight origin means yesterday
+repeated. I report MAE, RMSE and MAPE, and the forecast skill score
+\cite{marquez2013proposed}
+\begin{equation}
+    s = 1 - \frac{\mathrm{RMSE}_{\text{model}}}{\mathrm{RMSE}_{\text{ref}}},
+\end{equation}
+where $s = 0$ means no improvement on persistence and $s = 1$ means perfect
+prediction. All headline metrics are computed only on hours where observed GHI
+exceeds 20~W/m\textsuperscript{2}. Roughly half of any twenty-four hour window is
+night, when GHI is zero and every model is correct for free; including those
+hours would inflate both models' apparent accuracy and compress the difference
+between them. Predictions are clipped at zero before scoring, since irradiance
+cannot be negative and persistence, being composed of real observations, can
+never violate that floor.
+
+% ==========================================================
+\section{Experiments and Results}
+% ==========================================================
+
+\subsection{Experimental Setup}
+
+All results below are computed on 2024, a year touched exactly once, after all
+design decisions were fixed against the 2023 validation year. The test year
+contributes 364 daily forecasts, of which 4{,}229 of 8{,}736 hours survive the
+daylight mask. The pipeline runs end to end in roughly 75 seconds on a laptop CPU
+in Python 3.12 with PyTorch, scikit-learn, pandas and Matplotlib.
+
+\begin{table}[t]
+\centering
+\caption{Test-year (2024) performance, daylight-masked. Skill is measured
+against persistence. The upper bound is not a forecast; it is given the target
+day's observed weather.}
+\label{tab:main}
+\footnotesize
+\begin{tabular}{lrrrr}
+\toprule
+Model & MAE & RMSE & MAPE & Skill \\
+      & (W/m\textsuperscript{2}) & (W/m\textsuperscript{2}) & (\%) & \\
+\midrule
+Persistence        & 77.85 & 123.35 & 21.64 & 0.000 \\
+\textbf{LSTM}      & \textbf{62.82} & \textbf{90.78} & \textbf{21.01} & \textbf{0.264} \\
+\midrule
+\emph{Upper bound} & \emph{39.34} & \emph{62.11} & \emph{15.17} & \emph{0.496} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Results}
+
+Table~\ref{tab:main} reports the headline comparison. The LSTM reduces
+daylight-masked RMSE by 26.4 percent relative to persistence, corresponding to a
+forecast skill of 0.264, and reduces MAE by 19.3 percent. Both parts of the
+registered hypothesis are confirmed: skill is positive, and the seasonal
+breakdown in Fig.~\ref{fig:seasonal} gives 0.286 in the wet season against 0.201
+in the dry.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig4_seasonal.png}
+    \caption{Daylight-masked RMSE by month of the test year. The wet season
+    (June--December) is shaded. Persistence degrades sharply where the LSTM does
+    not, which is where the skill is earned.}
+    \label{fig:seasonal}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig2_cloudy_day.png}
+    \caption{The most heavily clouded day of the test year (2024-08-24).
+    Persistence replays a brighter previous day and overshoots badly; the LSTM,
+    having read the preceding twenty-four hours, forecasts a suppressed profile.}
+    \label{fig:cloudy}
+\end{figure}
+
+Fig.~\ref{fig:seasonal} shows where the aggregate number comes from. Persistence
+error peaks in July at roughly 177~W/m\textsuperscript{2} while the LSTM stays
+near 118, and the two models are nearly indistinguishable in February and March.
+Figs.~\ref{fig:cloudy} and~\ref{fig:clear} show the same contrast at the scale of
+a single day, and are best read as a pair: on the clearest day of the test year
+persistence is a perfectly reasonable forecast, and on the most clouded day it is
+not. Fig.~\ref{fig:hour} disaggregates by hour and shows that error for both
+models is concentrated around solar noon, when the absolute magnitude of
+irradiance, and therefore the scope to be wrong about it, is greatest.
+Fig.~\ref{fig:loss} records the training history: validation loss bottomed at
+epoch 5 and rose steadily thereafter while training loss kept falling, so early
+stopping restored epoch 5 and discarded the ten epochs of overfitting that
+followed.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig1_clear_day.png}
+    \caption{The clearest day of the test year (2024-09-05). Under a stable sky
+    both models track the observed profile closely, which is why the aggregate
+    skill in Table~\ref{tab:main} is not driven by days like this one.}
+    \label{fig:clear}
+\end{figure}
+
+%% fig:loss is defined after fig:hour so that float numbering follows the order
+%% in which the figures are referred to in the text.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig3_error_by_hour.png}
+    \caption{Daylight-masked MAE by hour of day. Both models are worst near solar
+    noon; the LSTM's advantage is widest there and narrows towards the terminators.}
+    \label{fig:hour}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig6_loss_curve.png}
+    \caption{Training and validation loss. The divergence after epoch 5 is
+    textbook overfitting; early stopping fired at epoch 15 and the epoch-5
+    weights were restored.}
+    \label{fig:loss}
+\end{figure}
+
+% ==========================================================
+\section{Discussion}
+% ==========================================================
+
+\textbf{Where the skill comes from.} Persistence carries yesterday's cloud field
+forward unchanged, which is an excellent assumption under a stable synoptic
+regime and a poor one under convection. The wet-season result is therefore not a
+quirk of my model but a statement about the baseline: persistence degrades from
+94.51 to 140.15~W/m\textsuperscript{2} between dry and wet seasons, a 48 percent
+deterioration, while the LSTM degrades from 75.55 to 100.13, a 33 percent
+deterioration. The learned model earns its keep precisely in the regime where the
+naive assumption breaks, which is the regime an operator most needs help with.
+The mechanism is visible in Fig.~\ref{fig:cloudy}: given an ambiguous encoder
+history the model hedges towards the seasonal clear-sky envelope it has learned
+from the calendar features, whereas persistence has no capacity to hedge at all.
+
+\textbf{A metric that disagrees.} MAPE separates the two models by almost
+nothing, 21.64 against 21.01 percent, while RMSE separates them by 26 percent.
+This is not a contradiction but a property of MAPE: it divides by the observed
+value, so hours barely above the 20~W/m\textsuperscript{2} daylight threshold
+dominate the average, and those hours near dawn and dusk are exactly where the
+two models most nearly agree. I report MAPE because it is conventional, but I
+would not use it to select a model for this task, and I lead on RMSE and skill
+score for that reason. An unmasked MAPE is undefined here in any case, because
+night GHI is exactly zero.
+
+\textbf{What a weather feed would be worth.} The upper-bound variant, handed the
+target day's observed weather but never its observed GHI, reaches a skill of
+0.496 against the primary model's 0.264. It is not a forecast and I never present
+it as one. Its value is that it converts an abstract question into a number: a
+hypothetical perfect NWP feed would roughly double the gain over persistence, and
+that is the figure to weigh against the cost of a subscription. It also bounds my
+own result usefully, showing that roughly half of the achievable improvement is
+available with no forecast information whatsoever.
+
+\textbf{Limitations.} Four are worth stating plainly. First, this is a single
+site, and skill scores do not transfer across climates, so nothing here should be
+read as a claim about tropical sites in general. Second, NASA POWER is
+satellite-derived reanalysis rather than a ground pyranometer; it is internally
+consistent and appropriate for a proof of concept, but a deployed system would
+need validation against station data. Third, I compared against persistence
+alone. A clear-sky-index formulation \cite{yang2020choice} or a gradient-boosted
+tree on the same features would be a more demanding reference, and I would expect
+them to close part of the gap. Fourth, the model is deterministic and emits a
+point forecast, whereas an operator sizing a reserve margin needs an interval.
+
+% ==========================================================
+\section{Conclusion and Future Work}
+% ==========================================================
+
+I set out to test whether a compact LSTM restricted to strictly past-observed
+data could beat persistence at next-day GHI forecasting for Port of Spain. It
+can: forecast skill of 0.264 on a held-out year, with the pre-registered
+wet-season advantage confirmed at 0.286 against 0.201. The result rests on
+twenty-seven programmatic leakage assertions and a bit-exactly reproducible
+pipeline, which I regard as the more durable contribution, since a skill score is
+only as credible as the audit behind it.
+
+Three extensions follow directly. The most valuable is a stronger reference:
+adding a clear-sky-index persistence model and a gradient-boosted baseline would
+establish how much of the 0.264 is attributable to recurrence rather than to
+merely having any learned model. The second is probabilistic output, via quantile
+regression or a pinball loss, which turns the forecast into the reserve-sizing
+input an operator actually needs. The third is spatial extension to several sites
+across the two islands, which would test transferability and open the possibility
+of a single model conditioned on location.
+
+% ==========================================================
+\section{Artifacts and Demonstrations}
+% ==========================================================
+
+\begin{itemize}[noitemsep,topsep=2pt]
+    \item \textbf{Code repository:} \url{[GITHUB URL]} --- full pipeline,
+      reproducible with a single command. Contains \texttt{DECISIONS.md}, a
+      numbered record of every discretionary choice with its rationale, and
+      \texttt{results/validation\_report.txt}, the full output of all three gates.
+    \item \textbf{Video presentation:} \url{[YOUTUBE URL]}
+\end{itemize}
+
+AI-assisted tools were used for structuring and formatting this report. The
+research design, implementation, analysis and conclusions are my own.
+
+% ==========================================================
+% References
+% ==========================================================
+\vfill\pagebreak
+{\fontsize{8}{9}\selectfont
+\bibliographystyle{IEEEbib}
+\bibliography{refs}
+}
+
+\end{document}

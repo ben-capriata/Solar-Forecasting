@@ -1,0 +1,37 @@
+{
+  "target": "ghi",
+  "encoder_features": [
+    "ghi",
+    "T2M",
+    "RH2M",
+    "WS10M",
+    "CLOUD_AMT",
+    "PW",
+    "hour_sin",
+    "hour_cos",
+    "doy_sin",
+    "doy_cos",
+    "wet_season"
+  ],
+  "decoder_features": [
+    "hour_sin",
+    "hour_cos",
+    "doy_sin",
+    "doy_cos",
+    "wet_season"
+  ],
+  "calendar_features": [
+    "hour_sin",
+    "hour_cos",
+    "doy_sin",
+    "doy_cos",
+    "wet_season"
+  ],
+  "weather_features": [
+    "T2M",
+    "RH2M",
+    "WS10M",
+    "CLOUD_AMT",
+    "PW"
+  ]
+}

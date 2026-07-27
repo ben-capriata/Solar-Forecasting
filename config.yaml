@@ -1,0 +1,134 @@
+# Configuration for next-day GHI forecasting, Port of Spain, Trinidad and Tobago.
+#
+# Every number the pipeline uses lives here. Modules read this file and never
+# hard-code a threshold, a window size, or a hyperparameter. The reason is
+# reproducibility: a reader can audit the whole experimental setup from one file,
+# and a reviewer can change one value and rerun without grepping through code.
+#
+# Units are stated for every physical quantity. NASA POWER serves hourly GHI in
+# Wh/m^2, which is numerically equal to the mean W/m^2 over that hour, so figures
+# and metrics are labelled W/m^2 throughout.
+
+location:
+  name: Port of Spain, Trinidad and Tobago
+  latitude: 10.6549       # degrees north
+  longitude: -61.5019     # degrees east, negative for west
+
+api:
+  url: https://power.larc.nasa.gov/api/temporal/hourly/point
+  community: RE           # NASA POWER renewable energy community
+  time_standard: LST      # local solar time, so solar noon sits near index hour 12
+  response_format: JSON
+  fill_value: -999.0      # POWER missing-data sentinel
+  timeout_seconds: 120
+  sleep_seconds: 2.0      # polite delay between year requests, do not remove
+  max_retries: 3
+  retry_backoff_seconds: 5.0
+
+data:
+  start: 2019-01-01
+  end: 2024-12-31
+  # Source column names exactly as NASA POWER returns them.
+  source_columns:
+    - ALLSKY_SFC_SW_DWN   # all-sky surface shortwave down, used as GHI, Wh/m^2
+    - T2M                 # air temperature at 2 m, degrees Celsius
+    - RH2M                # relative humidity at 2 m, percent
+    - WS10M               # wind speed at 10 m, m/s
+    - CLOUD_AMT           # cloud amount, percent
+    - PW                  # precipitable water, cm
+  ghi_source_column: ALLSKY_SFC_SW_DWN
+  target_column: ghi
+  # Weather features are past-observed only. They never appear in the decoder.
+  weather_features:
+    - T2M
+    - RH2M
+    - WS10M
+    - CLOUD_AMT
+    - PW
+  # Calendar features are deterministic functions of the clock, so they are the
+  # only features legitimately known for tomorrow without a weather forecast.
+  calendar_features:
+    - hour_sin
+    - hour_cos
+    - doy_sin
+    - doy_cos
+    - wet_season
+  max_missing_fraction: 0.05        # a column above this is dropped, see Gate 0
+  max_interpolation_gap_hours: 3    # longer gaps stay NaN and their windows are dropped
+
+gate0:
+  expected_rows: 52608              # 2192 days from 2019-01-01 to 2024-12-31 inclusive, times 24
+  row_count_tolerance: 0            # documented gaps would raise this above zero
+  night_hours: [21, 22, 23, 0, 1, 2, 3, 4]
+  night_mean_max: 20.0              # W/m^2, the sun is down so this must be near zero
+  midday_hours: [11, 12, 13]
+  midday_mean_min: 300.0            # W/m^2
+  midday_mean_max: 1100.0           # W/m^2
+  ghi_absolute_max: 1200.0          # W/m^2, above this the data is not physical here
+
+windowing:
+  encoder_hours: 24                 # input covers t-23 through t inclusive
+  horizon_hours: 24                 # target covers t+1 through t+24
+  train_stride: 1                   # dense training windows, permitted by spec section 8
+  eval_stride: 24                   # non-overlapping forecast origins for honest evaluation
+  origin_hour: 0                    # forecast origin at local midnight
+
+splits:
+  # Chronological by calendar year. Never random, see spec section 14.
+  train_years: [2019, 2020, 2021, 2022]
+  val_years: [2023]
+  test_years: [2024]
+
+model:
+  hidden_size: 64
+  num_layers: 2
+  dropout: 0.2                      # applied between the two LSTM layers
+  head_hidden: 128                  # single ReLU hidden layer in the MLP head
+
+training:
+  learning_rate: 0.001
+  batch_size: 64
+  max_epochs: 100
+  early_stopping_patience: 10
+  num_workers: 0                    # zero keeps dataloader ordering deterministic
+  device: cpu                       # CPU avoids cuDNN LSTM non-determinism entirely
+
+evaluation:
+  daylight_threshold: 20.0          # W/m^2, hours at or below this are excluded from headline metrics
+  wet_season_months: [6, 7, 8, 9, 10, 11, 12]   # June through December
+  clip_predictions_at_zero: true    # GHI cannot be negative, same floor applied to inputs
+
+synthetic:
+  # Gate 1 fixture. A clipped sinusoid whose shape the model must be able to learn.
+  # If the pipeline cannot fit this, the pipeline is broken, not the model.
+  peak_base: 700.0                  # W/m^2, midday peak before annual modulation
+  peak_annual_amplitude: 150.0      # W/m^2, seasonal swing of the midday peak
+  noise_std: 5.0                    # W/m^2, small seeded noise
+  daylight_half_width_hours: 6.0    # hours either side of solar noon with nonzero irradiance
+  train_stride: 4                   # coarse stride keeps the gate fast, still ~8700 windows
+  max_epochs: 5                     # "within a few epochs", spec section 6
+  loss_threshold: 0.15              # scaled MSE the model must reach, tolerant to avoid flakiness
+  persistence_rmse_max: 5.0         # W/m^2 on the noise-free variant, near zero against a 700 peak
+  sandbox_prefix: gate1_sandbox     # Gate 1 artefacts land here, never over the real ones
+
+reproducibility:
+  seed: 42
+
+figures:
+  dpi: 150                          # spec section 2 requires 150 or higher
+
+paths:
+  raw_parquet: data/raw/pos_hourly_2019_2024.parquet
+  features_parquet: data/processed/features.parquet
+  scaler: data/processed/scaler.pkl
+  feature_spec: data/processed/feature_spec.json
+  windows: data/processed/windows.npz
+  window_index: data/processed/window_index.csv
+  validation_report: results/validation_report.txt
+  metrics_csv: results/metrics.csv
+  summary_txt: results/summary.txt
+  loss_log: results/loss_log.csv
+  predictions_dir: results/predictions
+  checkpoint: results/checkpoints/lstm_best.pt
+  checkpoint_config: results/checkpoints/lstm_best_config.json
+  figures_dir: results/figures

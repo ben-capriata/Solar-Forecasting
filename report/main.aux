@@ -1,0 +1,73 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldcontentsline\contentsline
+\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\contentsline\oldcontentsline
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{gott2021tt}
+\citation{yang2018history}
+\citation{inman2013solar}
+\citation{qing2018hourly}
+\@writefile{toc}{\contentsline {section}{\numberline {1} Introduction}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2} Problem Statement and Objectives}{1}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1} Problem Statement}{1}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2} Objectives}{1}{subsection.2.2}\protected@file@percent }
+\citation{sparks2018nasapower}
+\citation{hochreiter1997long}
+\citation{srivastava2014dropout}
+\citation{sutskever2014sequence}
+\citation{kingma2015adam}
+\citation{marquez2013proposed}
+\@writefile{toc}{\contentsline {section}{\numberline {3} Methodology}{2}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1} Data and Features}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2} Windowing, Splits and Scaling}{2}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3} Model Architecture}{2}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4} Training}{2}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5} Validation Gates}{2}{subsection.3.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Test-year (2024) performance, daylight-masked. Skill is measured against persistence. The upper bound is not a forecast; it is given the target day's observed weather.}}{3}{table.1}\protected@file@percent }
+\newlabel{tab:main}{{1}{3}{Test-year (2024) performance, daylight-masked. Skill is measured against persistence. The upper bound is not a forecast; it is given the target day's observed weather}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.6} Baseline and Metrics}{3}{subsection.3.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4} Experiments and Results}{3}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1} Experimental Setup}{3}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2} Results}{3}{subsection.4.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Daylight-masked RMSE by month of the test year. The wet season (June--December) is shaded. Persistence degrades sharply where the LSTM does not, which is where the skill is earned.}}{3}{figure.1}\protected@file@percent }
+\newlabel{fig:seasonal}{{1}{3}{Daylight-masked RMSE by month of the test year. The wet season (June--December) is shaded. Persistence degrades sharply where the LSTM does not, which is where the skill is earned}{figure.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces The most heavily clouded day of the test year (2024-08-24). Persistence replays a brighter previous day and overshoots badly; the LSTM, having read the preceding twenty-four hours, forecasts a suppressed profile.}}{3}{figure.2}\protected@file@percent }
+\newlabel{fig:cloudy}{{2}{3}{The most heavily clouded day of the test year (2024-08-24). Persistence replays a brighter previous day and overshoots badly; the LSTM, having read the preceding twenty-four hours, forecasts a suppressed profile}{figure.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5} Discussion}{3}{section.5}\protected@file@percent }
+\citation{yang2020choice}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces The clearest day of the test year (2024-09-05). Under a stable sky both models track the observed profile closely, which is why the aggregate skill in Table\nobreakspace  {}\ref  {tab:main} is not driven by days like this one.}}{4}{figure.3}\protected@file@percent }
+\newlabel{fig:clear}{{3}{4}{The clearest day of the test year (2024-09-05). Under a stable sky both models track the observed profile closely, which is why the aggregate skill in Table~\ref {tab:main} is not driven by days like this one}{figure.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Daylight-masked MAE by hour of day. Both models are worst near solar noon; the LSTM's advantage is widest there and narrows towards the terminators.}}{4}{figure.4}\protected@file@percent }
+\newlabel{fig:hour}{{4}{4}{Daylight-masked MAE by hour of day. Both models are worst near solar noon; the LSTM's advantage is widest there and narrows towards the terminators}{figure.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6} Conclusion and Future Work}{4}{section.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Training and validation loss. The divergence after epoch 5 is textbook overfitting; early stopping fired at epoch 15 and the epoch-5 weights were restored.}}{4}{figure.5}\protected@file@percent }
+\newlabel{fig:loss}{{5}{4}{Training and validation loss. The divergence after epoch 5 is textbook overfitting; early stopping fired at epoch 15 and the epoch-5 weights were restored}{figure.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7} Artifacts and Demonstrations}{4}{section.7}\protected@file@percent }
+\bibstyle{IEEEbib}
+\bibdata{refs}
+\bibcite{gott2021tt}{1}
+\bibcite{yang2018history}{2}
+\bibcite{inman2013solar}{3}
+\bibcite{qing2018hourly}{4}
+\bibcite{sparks2018nasapower}{5}
+\bibcite{hochreiter1997long}{6}
+\bibcite{srivastava2014dropout}{7}
+\bibcite{sutskever2014sequence}{8}
+\bibcite{kingma2015adam}{9}
+\bibcite{marquez2013proposed}{10}
+\bibcite{yang2020choice}{11}
+\@writefile{toc}{\contentsline {section}{\numberline {8} References}{5}{section.8}\protected@file@percent }
+\gdef \@abspage@last{5}

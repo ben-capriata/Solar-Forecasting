@@ -1,0 +1,66 @@
+========================================================================
+VALIDATION REPORT, run started 2026-07-25T13:38:52
+========================================================================
+========================================================================
+GATE 0, data sanity: PASS
+    [ok  ] row count within tolerance 0 of expected 52608: 52608 rows, delta 0
+    [ok  ] GHI units metadata for ALLSKY_SFC_SW_DWN: Wh/m^2
+    [ok  ] night mean GHI below 20.0: 0.000 W/m^2
+    [ok  ] midday mean GHI within [300.0, 1100.0]: 730.575 W/m^2
+    [ok  ] maximum GHI below 1200.0: 1022.580 W/m^2
+    [ok  ] no duplicated timestamps: 0
+    [ok  ] column ALLSKY_SFC_SW_DWN missing fraction at or below 5.00%: 0.0000% (0 cells)
+    [ok  ] column T2M missing fraction at or below 5.00%: 0.0000% (0 cells)
+    [ok  ] column RH2M missing fraction at or below 5.00%: 0.0000% (0 cells)
+    [ok  ] column WS10M missing fraction at or below 5.00%: 0.0000% (0 cells)
+    [ok  ] column CLOUD_AMT missing fraction at or below 5.00%: 0.0000% (0 cells)
+    [ok  ] column PW missing fraction at or below 5.00%: 0.0000% (0 cells)
+    [ok  ] no column exceeded 5.00% missing, none dropped
+
+========================================================================
+GATE 1, synthetic pipeline validation: PASS
+    [ok  ] persistence daylight RMSE on the noise-free fixture below 5.0 W/m^2: 1.3452 W/m^2
+    [ok  ] train: encoder shape is (samples, 24, 11): (8754, 24, 11)
+    [ok  ] train: decoder shape is (samples, 24, 5): (8754, 24, 5)
+    [ok  ] train: target shape is (samples, 24): (8754, 24)
+    [ok  ] train: no NaN reaches the model: all finite
+    [ok  ] val: encoder shape is (samples, 24, 11): (363, 24, 11)
+    [ok  ] val: decoder shape is (samples, 24, 5): (363, 24, 5)
+    [ok  ] val: target shape is (samples, 24): (363, 24)
+    [ok  ] val: no NaN reaches the model: all finite
+    [ok  ] test: encoder shape is (samples, 24, 11): (364, 24, 11)
+    [ok  ] test: decoder shape is (samples, 24, 5): (364, 24, 5)
+    [ok  ] test: target shape is (samples, 24): (364, 24)
+    [ok  ] test: no NaN reaches the model: all finite
+    [ok  ] validation MSE falls below 0.15 within 5 epochs: 0.000290 at epoch 5
+    [ok  ] training loss decreased from the first epoch to the best epoch: 0.096143 to 0.000342
+    [ok  ] sandbox artefacts and the fixture's own Gate 0 and Gate 2 verdicts: /Users/bencapriata/Developer/solar_forcasting/gate1_sandbox/results/validation_report.txt
+
+========================================================================
+GATE 2, leakage audit: PASS
+    [ok  ] train: every sample's last input hour precedes its first target hour: 35017 samples verified
+    [ok  ] train: encoder values equal scaled observations at the encoder hours: max absolute difference 1.192e-07
+    [ok  ] train: target values equal scaled ghi at the target hours: max absolute difference 1.192e-07
+    [ok  ] train: decoder values equal calendar features at the target hours: max absolute difference 5.919e-08
+    [ok  ] train: decoder carries only the 5 calendar features: width 5, calendar features ['hour_sin', 'hour_cos', 'doy_sin', 'doy_cos', 'wet_season']
+    [ok  ] train: no NaN reaches the model: all finite
+    [ok  ] val: every sample's last input hour precedes its first target hour: 363 samples verified
+    [ok  ] val: encoder values equal scaled observations at the encoder hours: max absolute difference 1.192e-07
+    [ok  ] val: target values equal scaled ghi at the target hours: max absolute difference 1.187e-07
+    [ok  ] val: decoder values equal calendar features at the target hours: max absolute difference 5.919e-08
+    [ok  ] val: decoder carries only the 5 calendar features: width 5, calendar features ['hour_sin', 'hour_cos', 'doy_sin', 'doy_cos', 'wet_season']
+    [ok  ] val: no NaN reaches the model: all finite
+    [ok  ] test: every sample's last input hour precedes its first target hour: 364 samples verified
+    [ok  ] test: encoder values equal scaled observations at the encoder hours: max absolute difference 1.704e-07
+    [ok  ] test: target values equal scaled ghi at the target hours: max absolute difference 1.191e-07
+    [ok  ] test: decoder values equal calendar features at the target hours: max absolute difference 5.919e-08
+    [ok  ] test: decoder carries only the 5 calendar features: width 5, calendar features ['hour_sin', 'hour_cos', 'doy_sin', 'doy_cos', 'wet_season']
+    [ok  ] test: no NaN reaches the model: all finite
+    [ok  ] train and val touch no common hour: 0 shared hours
+    [ok  ] train and test touch no common hour: 0 shared hours
+    [ok  ] val and test touch no common hour: 0 shared hours
+    [ok  ] train ends before val begins: train ends 2022-12-31 23:00:00, val begins 2023-01-01 01:00:00
+    [ok  ] val ends before test begins: val ends 2023-12-31 00:00:00, test begins 2024-01-01 01:00:00
+    [ok  ] scaler fit index ends before the validation year begins: fit spanned 2019-01-01 00:00:00 to 2022-12-31 23:00:00 over 35064 rows, validation starts 2023-01-01 00:00:00
+    [ok  ] scaler fit index begins in the first training year: 2019
+

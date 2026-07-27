@@ -1,0 +1,72 @@
+\begin{thebibliography}{10}
+
+\bibitem{gott2021tt}
+{Government of the Republic of Trinidad and Tobago},
+\newblock ``Trinidad and tobago's nationally determined contribution under the
+  paris agreement,''
+\newblock Tech. {R}ep., Ministry of Planning and Development, Port of Spain,
+  Trinidad and Tobago, 2018.
+
+\bibitem{yang2018history}
+Dazhi Yang, Jan Kleissl, Christian~A. Gueymard, Hugo T.~C. Pedro, and Carlos
+  F.~M. Coimbra,
+\newblock ``History and trends in solar irradiance and {PV} power forecasting:
+  A preliminary assessment and review using text mining,''
+\newblock {\em Solar Energy}, vol. 168, pp. 60--101, 2018.
+
+\bibitem{inman2013solar}
+Rich~H. Inman, Hugo T.~C. Pedro, and Carlos F.~M. Coimbra,
+\newblock ``Solar forecasting methods for renewable energy integration,''
+\newblock {\em Progress in Energy and Combustion Science}, vol. 39, no. 6, pp.
+  535--576, 2013.
+
+\bibitem{qing2018hourly}
+Xiangyun Qing and Yugang Niu,
+\newblock ``Hourly day-ahead solar irradiance prediction using weather
+  forecasts by {LSTM},''
+\newblock {\em Energy}, vol. 148, pp. 461--468, 2018.
+
+\bibitem{sparks2018nasapower}
+Adam~H. Sparks,
+\newblock ``nasapower: A {NASA} {POWER} global meteorology, surface solar
+  energy and climatology data client for {R},''
+\newblock {\em Journal of Open Source Software}, vol. 3, no. 30, pp. 1035,
+  2018.
+
+\bibitem{hochreiter1997long}
+Sepp Hochreiter and J{\"u}rgen Schmidhuber,
+\newblock ``Long short-term memory,''
+\newblock {\em Neural Computation}, vol. 9, no. 8, pp. 1735--1780, 1997.
+
+\bibitem{srivastava2014dropout}
+Nitish Srivastava, Geoffrey Hinton, Alex Krizhevsky, Ilya Sutskever, and Ruslan
+  Salakhutdinov,
+\newblock ``Dropout: A simple way to prevent neural networks from
+  overfitting,''
+\newblock {\em Journal of Machine Learning Research}, vol. 15, no. 1, pp.
+  1929--1958, 2014.
+
+\bibitem{sutskever2014sequence}
+Ilya Sutskever, Oriol Vinyals, and Quoc~V. Le,
+\newblock ``Sequence to sequence learning with neural networks,''
+\newblock in {\em Advances in Neural Information Processing Systems}, 2014,
+  vol.~27, pp. 3104--3112.
+
+\bibitem{kingma2015adam}
+Diederik~P. Kingma and Jimmy Ba,
+\newblock ``Adam: A method for stochastic optimization,''
+\newblock in {\em Proc. Intl. Conf. on Learning Representations (ICLR)}, 2015.
+
+\bibitem{marquez2013proposed}
+Ricardo Marquez and Carlos F.~M. Coimbra,
+\newblock ``Proposed metric for evaluation of solar forecasting models,''
+\newblock {\em Journal of Solar Energy Engineering}, vol. 135, no. 1, pp.
+  011016, 2013.
+
+\bibitem{yang2020choice}
+Dazhi Yang,
+\newblock ``Choice of clear-sky model in solar forecasting,''
+\newblock {\em Journal of Renewable and Sustainable Energy}, vol. 12, no. 2,
+  pp. 026101, 2020.
+
+\end{thebibliography}

@@ -1,0 +1,171 @@
+{
+  "model_name": "lstm",
+  "config": {
+    "location": {
+      "name": "Port of Spain, Trinidad and Tobago",
+      "latitude": 10.6549,
+      "longitude": -61.5019
+    },
+    "api": {
+      "url": "https://power.larc.nasa.gov/api/temporal/hourly/point",
+      "community": "RE",
+      "time_standard": "LST",
+      "response_format": "JSON",
+      "fill_value": -999.0,
+      "timeout_seconds": 120,
+      "sleep_seconds": 2.0,
+      "max_retries": 3,
+      "retry_backoff_seconds": 5.0
+    },
+    "data": {
+      "start": "2019-01-01",
+      "end": "2024-12-31",
+      "source_columns": [
+        "ALLSKY_SFC_SW_DWN",
+        "T2M",
+        "RH2M",
+        "WS10M",
+        "CLOUD_AMT",
+        "PW"
+      ],
+      "ghi_source_column": "ALLSKY_SFC_SW_DWN",
+      "target_column": "ghi",
+      "weather_features": [
+        "T2M",
+        "RH2M",
+        "WS10M",
+        "CLOUD_AMT",
+        "PW"
+      ],
+      "calendar_features": [
+        "hour_sin",
+        "hour_cos",
+        "doy_sin",
+        "doy_cos",
+        "wet_season"
+      ],
+      "max_missing_fraction": 0.05,
+      "max_interpolation_gap_hours": 3
+    },
+    "gate0": {
+      "expected_rows": 52608,
+      "row_count_tolerance": 0,
+      "night_hours": [
+        21,
+        22,
+        23,
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "night_mean_max": 20.0,
+      "midday_hours": [
+        11,
+        12,
+        13
+      ],
+      "midday_mean_min": 300.0,
+      "midday_mean_max": 1100.0,
+      "ghi_absolute_max": 1200.0
+    },
+    "windowing": {
+      "encoder_hours": 24,
+      "horizon_hours": 24,
+      "train_stride": 1,
+      "eval_stride": 24,
+      "origin_hour": 0
+    },
+    "splits": {
+      "train_years": [
+        2019,
+        2020,
+        2021,
+        2022
+      ],
+      "val_years": [
+        2023
+      ],
+      "test_years": [
+        2024
+      ]
+    },
+    "model": {
+      "hidden_size": 64,
+      "num_layers": 2,
+      "dropout": 0.2,
+      "head_hidden": 128
+    },
+    "training": {
+      "learning_rate": 0.001,
+      "batch_size": 64,
+      "max_epochs": 100,
+      "early_stopping_patience": 10,
+      "num_workers": 0,
+      "device": "cpu"
+    },
+    "evaluation": {
+      "daylight_threshold": 20.0,
+      "wet_season_months": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "clip_predictions_at_zero": true
+    },
+    "synthetic": {
+      "peak_base": 700.0,
+      "peak_annual_amplitude": 150.0,
+      "noise_std": 5.0,
+      "daylight_half_width_hours": 6.0,
+      "train_stride": 4,
+      "max_epochs": 5,
+      "loss_threshold": 0.15,
+      "persistence_rmse_max": 5.0,
+      "sandbox_prefix": "gate1_sandbox"
+    },
+    "reproducibility": {
+      "seed": 42
+    },
+    "figures": {
+      "dpi": 150
+    },
+    "paths": {
+      "raw_parquet": "data/raw/pos_hourly_2019_2024.parquet",
+      "features_parquet": "data/processed/features.parquet",
+      "scaler": "data/processed/scaler.pkl",
+      "feature_spec": "data/processed/feature_spec.json",
+      "windows": "data/processed/windows.npz",
+      "window_index": "data/processed/window_index.csv",
+      "validation_report": "results/validation_report.txt",
+      "metrics_csv": "results/metrics.csv",
+      "summary_txt": "results/summary.txt",
+      "loss_log": "results/loss_log.csv",
+      "predictions_dir": "results/predictions",
+      "checkpoint": "results/checkpoints/lstm_best.pt",
+      "checkpoint_config": "results/checkpoints/lstm_best_config.json",
+      "figures_dir": "results/figures"
+    }
+  },
+  "config_source": "/Users/bencapriata/Developer/solar_forcasting/config.yaml",
+  "n_parameters": 79768,
+  "best_epoch": 5,
+  "best_val_loss_scaled_mse": 0.05730924013220524,
+  "epochs_run": 15,
+  "encoder_shape": [
+    24,
+    11
+  ],
+  "decoder_shape": [
+    24,
+    5
+  ],
+  "n_train_windows": 35017,
+  "n_val_windows": 363,
+  "n_test_windows": 364
+}

@@ -1,0 +1,20 @@
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Next-day GHI forecast, Port of Spain, Trinidad and Tobago                   │
+│  Held-out test year 2024, 364 forecast days, origin at local midnight        │
+│  Headline metrics are daylight-masked: 4229 of 8736 hours above 20 W/m^2     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Model                  MAE      RMSE      MAPE       Skill     RMSE unmasked │
+│                      W/m^2     W/m^2         %  vs persist             W/m^2 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ persistence          77.85    123.35     21.64       0.000             85.82 │
+│ lstm                 62.82     90.78     21.01       0.264             63.68 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Daylight-masked RMSE by season, W/m^2                                       │
+│ Model                wet (Jun-Dec)     dry (Jan-May)   wet skill   dry skill │
+│ persistence                 140.15             94.51       0.000       0.000 │
+│ lstm                        100.13             75.55       0.286       0.201 │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+The LSTM beat persistence by 26.4% of its RMSE. The sun kept its schedule, and so did the pipeline.
+
+Note: MAPE is reported for daylight hours only. An unmasked MAPE is undefined here, because night GHI is exactly zero.

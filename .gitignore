@@ -12,6 +12,21 @@ venv/
 .idea/
 .vscode/
 
-# Generated data and plots
+# Generated data. Parquet files are reproducible from src.ingest, so they are not
+# tracked. The raw six-year pull is roughly 3 MB and takes about 15 seconds to refetch.
 *.parquet
+data/processed/*.npz
+data/processed/*.pkl
+
+# Plots are ignored by default, but the seven report figures ARE deliverables
+# (handoff spec section 15), so results/figures is exempted.
 *.png
+!results/figures/*.png
+
+# Keep the results directory structure present in a fresh clone.
+!results/figures/
+!results/checkpoints/
+
+# Gate 1 writes its fixture artefacts here so it can never overwrite the real run.
+gate1_sandbox/
+results/predictions/
