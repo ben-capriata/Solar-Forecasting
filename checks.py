@@ -9,6 +9,7 @@ these are checked by code on every run and written to results/validation_report.
 """
 
 from datetime import datetime
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -147,7 +148,7 @@ def gate2(df: pd.DataFrame, windows: dict, x_scaler, y_scaler) -> None:
         for right in names[i + 1:]:
             shared = len(touched[left] & touched[right])
             checks.append((f"{left} and {right} touch no common hour", shared == 0, f"{shared} shared hours"))
-    for left, right in zip(names, names[1:]):  # two checks: the splits are in time order
+    for left, right in pairwise(names):  # two checks: the splits are in time order
         end, begin = df.index[max(touched[left])], df.index[min(touched[right])]
         checks.append((f"{left} ends before {right} begins", end < begin, f"{end} then {begin}"))
 

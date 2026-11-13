@@ -1,8 +1,3 @@
-"""Download six years of hourly NASA POWER data for Port of Spain: python fetch_data.py
-
-Only needed once. The result is saved to data/raw/pos_hourly_2019_2024.parquet.
-"""
-
 import time
 from pathlib import Path
 

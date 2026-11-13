@@ -1,4 +1,4 @@
-VALIDATION REPORT, run started 2026-11-12 20:21:57
+VALIDATION REPORT, run started 2026-11-13 19:09:17
 ========================================================================
 GATE 0, data sanity: PASS
     [ok  ] one row for every hour in the date range: 52608 of 52608

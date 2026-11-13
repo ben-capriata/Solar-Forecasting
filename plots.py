@@ -17,8 +17,8 @@ import forecast as fc
 
 FIGURES = Path("results/figures")
 BLUE, ORANGE, INK = "#2979D9", "#EB6834", "#111111"  # LSTM, persistence, observed
-STYLE = {"persistence": dict(color=ORANGE, linestyle="--", marker="s", label="Persistence"),
-         "lstm": dict(color=BLUE, linestyle="-", marker="o", label="LSTM")}
+STYLE = {"persistence": {"color": ORANGE, "linestyle": "--", "marker": "s", "label": "Persistence"},
+         "lstm": {"color": BLUE, "linestyle": "-", "marker": "o", "label": "LSTM"}}
 UNIT = "W/m$^2$"
 
 

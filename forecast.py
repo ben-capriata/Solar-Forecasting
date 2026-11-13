@@ -1,9 +1,5 @@
 """Next-day solar irradiance forecasting for Port of Spain, Trinidad.
 
-Question: with only the past 24 hours of observations and no weather forecast,
-can a small LSTM beat persistence ("tomorrow will look like today")?
-
-The whole method is in this file, in the order it runs:
     1. load_data       hourly NASA POWER data plus calendar features
     2. fit_scalers     standardise using the training years only
     3. make_windows    cut examples: 24 hours in, 24 hours out
@@ -223,7 +219,7 @@ def evaluate(predictions: dict[str, np.ndarray], window: dict, split: str) -> pd
     rows = []
     for model, pred in predictions.items():
         def add(season, metric, value):
-            rows.append({"model": model, "split": split, "season": season, "metric": metric, "value": value})
+            rows.append({"model": model, "split": split, "season": season, "metric": metric, "value": value})  # noqa: B023
 
         for season, in_season in seasons.items():
             day = in_season & daylight
@@ -255,14 +251,14 @@ def summary(metrics: pd.DataFrame, split: str = "test") -> str:
     first = models[0]
     lines = [
         "Next-day GHI forecast, Port of Spain, Trinidad and Tobago",
-        f"Test year {SPLITS[split][0]}: {int(table[first, 'all', 'n_forecast_days'])} forecast days, "
-        f"{int(table[first, 'all', 'n_hours_masked'])} of {int(table[first, 'all', 'n_hours_total'])} "
-        f"hours are daylight (above {DAYLIGHT:.0f} W/m^2) and are scored.",
+        (f"Test year {SPLITS[split][0]}: {int(table[first, 'all', 'n_forecast_days'])} forecast days, "
+         f"{int(table[first, 'all', 'n_hours_masked'])} of {int(table[first, 'all', 'n_hours_total'])} "
+         f"hours are daylight (above {DAYLIGHT:.0f} W/m^2) and are scored."),
         "",
         f"{'Model':<17}{'MAE':>8}{'RMSE':>9}{'MAPE %':>9}{'Skill':>8}{'Wet skill':>11}{'Dry skill':>11}",
     ]
     for model in models:
-        get = lambda season, metric: table[model, season, metric]  # noqa: E731
+        get = lambda season, metric: table[model, season, metric]  # noqa: B023
         lines.append(
             f"{model:<17}{get('all', 'mae_masked'):>8.2f}{get('all', 'rmse_masked'):>9.2f}"
             f"{get('all', 'mape_masked'):>9.2f}{get('all', 'skill_score_masked'):>8.3f}"
