@@ -22,13 +22,32 @@ not a forecast, reaches skill 0.496.
 
 ## Run it
 
+Requires Python 3.12 (the version CI tests). Installing the requirements downloads
+PyTorch, about 0.5 GB, so the first install can take several minutes.
+
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python fetch_data.py          # once: downloads six years from NASA POWER
-python run.py                 # gates, training, results table
-python run.py --upper-bound   # also trains the perfect-weather variant
+python fetch_data.py          # once, about 1 minute: downloads six years from NASA POWER
+python run.py                 # about 1 minute: gates, training, results table
 python plots.py               # draws the seven figures
+```
+
+The committed `results/` come from exactly these commands, and a rerun reproduces them
+exactly. The upper-bound result is optional:
+
+```bash
+python run.py --upper-bound   # about 2 minutes: the same run plus the perfect-weather variant
+```
+
+It writes `results/metrics_upperbound.csv` and adds a third row to `results/summary.txt`.
+
+To run the tests and the linter, as CI does:
+
+```bash
+pip install pytest ruff
+python -m pytest
+ruff check .
 ```
 
 ## The files
@@ -40,7 +59,6 @@ python plots.py               # draws the seven figures
 | `run.py` | Runs everything in order and prints the results table |
 | `plots.py` | Draws the figures used in the report |
 | `fetch_data.py` | Downloads the data |
-| `DECISIONS.md` | The design choices and the reason for each |
 | `results/` | Metrics, the validation report, the loss log, the trained model, the figures |
 
 ## How it works

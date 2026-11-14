@@ -12,14 +12,13 @@ venv/
 .idea/
 .vscode/
 
-# Generated data. Parquet files are reproducible from src.ingest, so they are not
-# tracked. The raw six-year pull is roughly 3 MB and takes about 15 seconds to refetch.
+# Downloaded data. Not tracked: python fetch_data.py refetches it in about a minute.
 *.parquet
-data/processed/*.npz
-data/processed/*.pkl
+# Local outputs of an earlier version of the pipeline.
+data/processed/
 
-# Plots are ignored by default, but the seven report figures ARE deliverables
-# (handoff spec section 15), so results/figures is exempted.
+# Plots are ignored by default, but the seven report figures are deliverables,
+# so results/figures is exempted.
 *.png
 !results/figures/*.png
 
@@ -27,8 +26,7 @@ data/processed/*.pkl
 !results/figures/
 !results/checkpoints/
 
-# Gate 1 writes its fixture artefacts here so it can never overwrite the real run.
-gate1_sandbox/
+# Test-year predictions written by run.py for plots.py; regenerated on every run.
 results/predictions/
 
-DECSIONS.md
+DECISIONS.md
